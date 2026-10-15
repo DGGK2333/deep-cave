@@ -1,0 +1,212 @@
+# style-contract.yaml — deep-cave
+# 单一事实来源。DOM 侧通过 CSS 变量消费，Canvas 侧通过 JS 常量 UI 消费。
+# 任何页面/组件不得引入契约外的主色、圆角体系或字号。
+version: 1
+status: approved
+updated: 2026-10-13
+consumers:
+  dom: ":root CSS 变量"
+  canvas: "JS 常量 UI（字体栈与字号）"
+
+# ============================================================
+# 1. 原始值
+# ============================================================
+colors:
+  # 既有底子（保留色值，仅补语义命名）
+  gold:    "#f5c542"   # 强调/货币
+  ink:     "#0a0c14"
+  panel:   "#161a28"
+  panel2:  "#1f2639"
+  line:    "#3a4460"
+  txt:     "#dfe6f5"
+  dim:     "#93a0bd"
+  red:     "#e2564d"
+  grn:     "#5fd08a"
+  blu:     "#58b6f0"
+  # 本次新增（补齐状态色与层级底色）
+  violet:  "#c98aff"   # 遗物 / 贯穿挡位
+  orange:  "#ffb648"   # 炸药 / 灼烧
+  hud-bg:  "rgba(10,13,22,.80)"   # 原 .72 → .80：暗场景下边界可辨
+  hud-line: "rgba(120,140,190,.50)" # 原 .35 → .50：提高描边对比
+  scrim:   "rgba(4,6,12,.74)"     # 模态遮罩
+  danger-bar: "linear-gradient(180deg,#ff7a6e,#c8332b)"
+  rope-bar:   "linear-gradient(180deg,#e8c07a,#a97b34)"
+  bag-bar:    "linear-gradient(180deg,#7fd2ff,#2f7fc4)"
+  boss-bar:   "linear-gradient(180deg,#c05aff,#7a2bb0)"
+  boss-bar-final: "linear-gradient(180deg,#ff4a6a,#a01030)"
+
+typography:
+  # Canvas 与 DOM 共用同一套字体栈（原来 Boss 血条缺中文字体回退）
+  family: '"PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif'
+  canvas:                 # 只有 4 档，不得新增
+    micro: { size: 10, weight: 700 }   # 掉落物角标
+    small: { size: 11, weight: 700 }   # 建筑招牌
+    body:  { size: 13, weight: 600 }   # 地点标签 / 提示药丸
+    num:   { size: 13, weight: 700 }   # 飘字数字
+  dom:                    # 只有 6 档，不得新增
+    xs:   { size: 11,   weight: 600 }  # 进度条内文字
+    sm:   { size: 12.5, weight: 400 }  # 底部操作条
+    md:   { size: 13,   weight: 600 }  # 按钮
+    base: { size: 13.5, weight: 400 }  # 列表正文
+    lg:   { size: 17,   weight: 700 }  # 金币等关键数字
+    xl:   { size: 21,   weight: 400 }  # 面板标题
+    xxl:  { size: 27,   weight: 400 }  # 主菜单标题
+  rules:
+    - "数字一律 tabular-nums，避免逐帧跳动"
+    - "Canvas 文字一律 3px 深色描边（rgba(6,8,14,.9)）后再填色"
+    - "DOM 关键数字在深底上允许 0 1px 2px rgba(0,0,0,.85) 投影"
+
+geometry:
+  radius: { sm: 8, md: 10, lg: 16, pill: 999 }   # 原 8/10/11/16/20 收敛为 4 档
+  stroke: { hair: 1, strong: 2 }
+  button: { h: 34, hBig: 46, hTouch: 44, padX: 13 }
+  tapTarget: { min: 44 }                          # 触控热区下限
+  bar:    { h: 16, gap: 7 }
+  hud:
+    pad: 12
+    left:  { x: 12, y: 12, w: 216 }
+    right: { x: 12, y: 12, minW: 158 }
+    bottom:{ y: 12 }
+    bossBarTop: 12          # 与左右 HUD 同一条带，居中
+    bossBarW: "min(46%, 520px)"
+    toastTop: 96            # = hud 带下方，永不与 bossBar 重叠
+  stage: { ratio: "16/9", canvasW: 1024, canvasH: 576, tile: 32 }
+  safeArea:                 # 触屏/刘海
+    inset: "env(safe-area-inset-*)"
+    touchPadBottom: "84px + inset-bottom"
+
+effects:
+  shadow: { card: "0 24px 70px rgba(0,0,0,.7)", stage: "0 0 60px rgba(0,0,0,.8)" }
+  blur:   { hud: 3, overlay: 4 }
+  glow:   { active: "0 0 0 1px rgba(245,197,66,.25) inset", ready: "0 0 0 2px rgba(125,255,168,.30)" }
+  motion:
+    instant: 60
+    fast: 120
+    base: 170      # 淡入淡出（transition/fade 用这个）
+    toast: 1750
+    slow: 250
+
+# ============================================================
+# 2. 语义别名（页面与组件只引用这一层）
+# ============================================================
+tokens:
+  color:
+    bg-stage:      "#05070d"
+    surface:       "{colors.panel}"
+    surface-2:     "{colors.panel2}"
+    border:        "{colors.line}"
+    text-primary:  "{colors.txt}"
+    text-muted:    "{colors.dim}"
+    text-on-gold:  "#241a05"
+    action-primary:   "{colors.gold}"      # 主操作：购买/继续/领取
+    action-secondary: "#31406b"
+    action-equip:     "#7a5a20"
+    state-danger:  "{colors.red}"
+    state-success: "{colors.grn}"
+    state-info:    "{colors.blu}"
+    state-relic:   "{colors.violet}"
+    state-warn:    "{colors.orange}"
+    state-disabled:"#6b7285"
+    reward:        "{colors.gold}"
+  spacing:
+    "2xs": 4
+    xs: 6
+    sm: 8
+    md: 12
+    lg: 16
+    xl: 22
+  layer:                   # z-index 契约（原来只有 touch=15 / overlay=20）
+    world:    0
+    hud:      10
+    bossbar:  12
+    toast:    13
+    touch:    15
+    fade:     18           # 必须高于 hud，否则过场时 HUD 不跟着黑
+    modal:    20
+  motion:
+    hover-lift: "translateY(-1px)"
+    tap-scale:  0.93
+    fade:       "{effects.motion.base}ms"
+    toast-life: "{effects.motion.toast}ms"
+
+# ============================================================
+# 3. 组件契约
+# ============================================================
+components:
+  hud-box:
+    radius: "{geometry.radius.md}"
+    bg: "{colors.hud-bg}"
+    border: "1px solid {colors.hud-line}"
+    padding: "9px 12px"
+    blur: "{effects.blur.hud}"
+  progress-bar:
+    height: "{geometry.bar.h}"
+    radius: "{geometry.radius.sm}"
+    track: "rgba(255,255,255,.09)"
+    label: "条内只放数字，语义移到图标/标签行；宽度必须 ≤ 容器宽 − 24px"
+    fill: { hp: "{colors.danger-bar}", rope: "{colors.rope-bar}", bag: "{colors.bag-bar}" }
+    states:
+      taut: "绳索剩余 < 90px 时 fill 换暖红并加 1px 描边脉动"
+      full: "背包满时 fill 换 danger"
+  boss-bar:                 # 本次从 Canvas 搬进 DOM
+    layer: "{tokens.layer.bossbar}"
+    geometry: "top 12 / 居中 / 宽 {geometry.hud.bossBarW} / 高 22"
+    parts: [名字, 数值 hp/max, 进度填充]
+    fill: { normal: "{colors.boss-bar}", final: "{colors.boss-bar-final}" }
+    rule: "与 #toast（top 96）不得重叠；左右不得压住 hudL/hudR"
+  toast:
+    layer: "{tokens.layer.toast}"
+    radius: "{geometry.radius.pill}"
+    bg: "rgba(12,16,28,.90)"
+    border: "1px solid rgba(120,140,190,.4)"
+    kinds: { info: "{colors.text-primary}", warn: "{colors.red}", good: "{colors.grn}", gold: "{colors.gold}" }
+    max: 4
+    life: "{tokens.motion.toast-life}"
+  button:
+    radius: "{geometry.radius.sm}"
+    height: "{geometry.button.h}"
+    padX: "{geometry.button.padX}"
+    variants:
+      primary: { bg: "{tokens.color.action-primary}", fg: "{tokens.color.text-on-gold}" }
+      buy:     { bg: "#2f6b46", border: "#3f8a5b" }
+      equip:   { bg: "{tokens.color.action-equip}", border: "#a37a2c" }
+      ghost:   { bg: "transparent", border: "{tokens.color.border}", fg: "{tokens.color.text-muted}" }
+      big:     { h: "{geometry.button.hBig}", fg: "{tokens.color.text-on-gold}" }
+    states:
+      hover:   "亮度 +8% 且 {tokens.motion.hover-lift}"
+      pressed: "scale({tokens.motion.tap-scale})"
+      selected:"{effects.glow.active}"
+      disabled:"opacity .4 + cursor not-allowed"
+      locked:  "ghost 样式 + 锁图标位置，不置灰到不可读"
+  panel-card:
+    radius: "{geometry.radius.lg}"
+    bg: "linear-gradient(180deg,#1b2236,#121724)"
+    border: "1px solid {tokens.color.border}"
+    shadow: "{effects.shadow.card}"
+    scrollbar: "8px / #39435f"
+  list-row:
+    radius: "{geometry.radius.md}"
+    layout: "左：名称+说明（.k / small）· 右：数值（.v, tabular-nums）"
+  chip-tag:
+    radius: "{geometry.radius.pill}"
+    font: "{typography.dom.xs}"
+  touch-pad:
+    layer: "{tokens.layer.touch}"
+    tapTarget: "{geometry.tapTarget.min}"
+    bottom: "{geometry.safeArea.touchPadBottom}"
+    rule: "面板打开时自动让位（layer < modal）"
+
+# ============================================================
+# 4. 交互反馈
+# ============================================================
+interaction:
+  click:      "按下 scale(.97)，120ms 回弹"
+  page-change:"淡入淡出 {tokens.motion.fade}，期间输入锁"
+  reward:     "飘字 + 金币音 + 若跨挡位再补一次音"
+  purchase:   "成功后重建面板（不再弹二次确认），失败 S.no()"
+  danger-action: "销毁存档类操作必须二次确认（现已符合）"
+  insufficient:"toast(warn) + S.no()，且按钮本身 disabled"
+  accessibility:
+    - "设置面板提供：主音量 / 震动强度 / 减少动态效果 / 触屏按键"
+    - "减少动态效果开启时：震屏归零、粒子数减半"
+    - "所有设置写入独立 key（deepcave_ui），不污染游戏存档"

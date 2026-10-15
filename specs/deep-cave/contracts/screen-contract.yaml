@@ -1,0 +1,155 @@
+# screen-contract.yaml — deep-cave
+# 审计范围：现有 12 个界面 + 缺口。priority: must-have | genre-specific | optional
+version: 1
+status: approved
+updated: 2026-10-13
+
+journey: |
+  首次进入 → start-menu → (tutorial-overlay) → 地表 hud
+  → 走到建筑 → shop / casino / upgrade / relics / portal / stats
+  → 洞口按 S → 地下 hud（loop：砸晶簇、打怪、拾取、绳索紧张）
+  → 长按 R 返程 → settlement → 回地表继续升级
+  死亡 → death → 回地表；第 15 层击败最终 Boss → victory → 无尽
+  任意时刻 Esc → menu（暂停）→ settings
+
+screens:
+
+  # ---------------- Entry ----------------
+  - id: start-menu
+    status: exists
+    priority: must-have
+    purpose: 让玩家理解玩法并选择继续/新开
+    entry_points: [页面加载]
+    primary_actions: [继续冒险, 重新开始]
+    layout: { top: 标题+一句话定位, mid: 玩法说明卡片, bottom: 主按钮 + 遗物进度]
+    components: [panel-card, item, big-button]
+    states: { default: ok, no-save: 只显示"开始新的旅程" }
+    edge_cases: [存档损坏 → 走 fresh()]
+    data_needs: [localStorage 存档存在性, 遗物进度]
+
+  - id: tutorial-overlay
+    priority: must-have
+    purpose: 解决"进游戏后不知道该干什么"（开局 0 金币 + 基础镐）
+    entry_points: [首次进入游戏且未看过]
+    primary_actions: [知道了]
+    dependencies: [start-menu]
+    layout: { mid: 三步清单覆盖层 }
+    components: [panel-card, list-row, big-button]
+    states: { default: 显示, dismissed: 永久不再显示, skipped: 同 dismissed }
+    edge_cases: [老玩家已有存档 → 不显示]
+    data_needs: [deepcave_ui.tutorialSeen]
+    acceptance: "只出现一次；可跳过；状态跨刷新保留"
+
+  - id: settings
+    priority: must-have
+    purpose: 集中的音量/震动/动效/输入设置（原先只有 M 静音）
+    entry_points: [menu 面板按钮]
+    primary_actions: [调主音量, 切换减少动态效果]
+    layout: { top: 标题, mid: 设置分组, bottom: 关闭]
+    components: [panel-card, item, ghost-button, ctabs]
+    states: { default: ok }
+    edge_cases: [localStorage 不可用 → 内存内生效不报错]
+    data_needs: [volume, shake, reduceFx, touchUI]
+
+  # ---------------- Core ----------------
+  - id: hud
+    status: exists
+    priority: must-have
+    purpose: 持续显示生命/绳索/背包/货币/深度，且不遮挡玩法区域
+    layout: { top-left: 三条进度, top-center: boss-bar（仅 Boss 层）, top-right: 货币+深度+武器, bottom: 操作提示 }
+    components: [hud-box, progress-bar, boss-bar]
+    states:
+      rope-taut: 剩余 < 90px 时整条转暖红
+      bag-full: 满仓时转危险色并提示
+      hud-region: 地表显示可下潜层数，地下显示"剩余"
+    edge_cases: [超长文本 → 条内只放数字, 暗色主题 → 提高底色不透明度与描边对比]
+    data_needs: [hp, rope, bag, gold, floor, weapon]
+
+  - id: portal
+    status: exists
+    priority: must-have
+    purpose: 用信标直达已探索楼层
+    entry_points: [地表 POI: 传送石柱]
+    primary_actions: [传送]
+    states: { empty: 引导如何获取信标, disabled: 绳索不足 }
+    edge_cases: [绳索不够 → 按钮 disabled 并标注需求]
+
+  - id: settlement
+    status: exists
+    priority: must-have
+    purpose: 返程后结算战利品
+    entry_points: [arriveSurface()]
+    primary_actions: [继续]
+    components: [list-row, total, big-button]
+    states: { empty: 空手返程 → toast 代替 }
+    data_needs: [战利品清单, 总价值]
+
+  - id: death
+    status: exists
+    priority: must-have
+    purpose: 说明代价（丢一半背包）并让玩家立刻重开
+    entry_points: [die()]
+    primary_actions: [再来一次]
+    states: { default: ok }
+    data_needs: [lost, kept, 累计统计]
+
+  - id: victory
+    status: exists
+    priority: must-have
+    purpose: 给出通关的收束感，并允许继续无尽
+    entry_points: [击败第 15 层最终 Boss]
+    primary_actions: [继续无尽下潜]
+    components: [list-row, big-button]
+
+  # ---------------- Growth ----------------
+  - id: upgrade
+    status: exists
+    priority: must-have
+    purpose: 花金币做局内成长
+    entry_points: [地表 POI: 装备工坊]
+    primary_actions: [升级某一项]
+    states: { maxed: 按钮显示"满级"并 disabled, insufficient: disabled }
+  - id: relics
+    status: exists
+    priority: must-have
+    purpose: 花遗物点做跨局永久成长
+    entry_points: [地表 POI: 遗物圣坛, menu 面板]
+    states: { insufficient: disabled + 显示所需点数, maxed: "MAX" }
+  - id: stats
+    status: exists
+    priority: genre-specific
+    purpose: 展示长期记录
+    entry_points: [menu 面板]
+    primary_actions: [清空战绩（二次确认）]
+    states: { empty: 全 0 也要正常显示 }
+
+  # ---------------- Economy ----------------
+  - id: shop
+    status: exists
+    priority: must-have
+    purpose: 买补给与基础武器；说明"价值决定强度"
+    entry_points: [地表 POI: 杂货商店]
+    primary_actions: [购买补给, 购买基础武器, 装备/卖出库存武器]
+    states: { insufficient: 按钮 disabled, no-weapon: 引导去碎石机摇钱 }
+  - id: casino
+    status: exists
+    priority: genre-specific
+    purpose: 金币/战利品/武器的 50/50 翻倍或清零
+    states: { no-stake: 提示先押注, busy: "发牌中…" 锁按钮, no-gold: 引导碎石机 }
+    edge_cases: [结算期间离开面板 → 视为弃局, 赌注消失 → 自动撤下]
+
+  # ---------------- 缺口 ----------------
+  - id: codex
+    status: missing
+    priority: optional
+    purpose: 矿物/怪物/武器挡位图鉴，提供收集动机
+    note: 本次不做，记录为后续可选
+
+audit:
+  loops_closed: true          # 首次进入 → 核心循环 → 结算 → 成长 → 再下潜 已闭合
+  orphans: []                 # 没有无入口或无出口的页面
+  merges_applied:
+    - "stats 并入 menu 入口，不单独占地表建筑位（避免地表过挤）"
+    - "relics 同时给地表 POI 与 menu 入口（高频，值得双入口）"
+  gaps_this_round: [tutorial-overlay, settings]
+  hud_rule: "HUD 不遮挡核心玩法区域：常驻元素只占屏幕四边，中央仅在 Boss 层出现一条血条"
